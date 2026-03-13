@@ -12,7 +12,7 @@ exports[`The PromoGenerator stack matches the snapshot 1`] = `
   "Parameters": {
     "HostingCertArn": {
       "Default": "/TEST/playground/promo-generator/GlobalCertArn",
-      "Description": "Certificate to use for the promo-generator \${this.stage}. This must reside in us-east-1",
+      "Description": "Certificate to use for the promo-generator TEST. This must reside in us-east-1",
       "Type": "AWS::SSM::Parameter::Value<String>",
     },
   },
@@ -61,6 +61,23 @@ exports[`The PromoGenerator stack matches the snapshot 1`] = `
       },
       "Type": "AWS::S3::Bucket",
       "UpdateReplacePolicy": "Retain",
+    },
+    "HostingBucketName35D32BCB": {
+      "Properties": {
+        "Description": "The name of the S3 bucket used to host the promo-generator TEST static assets",
+        "Name": "/TEST/playground/promo-generator/hosting-bucket",
+        "Tags": {
+          "Stack": "playground",
+          "Stage": "TEST",
+          "gu:cdk:version": "TEST",
+          "gu:repo": "guardian/promo-generator",
+        },
+        "Type": "String",
+        "Value": {
+          "Ref": "HostingBucket5DAC2127",
+        },
+      },
+      "Type": "AWS::SSM::Parameter",
     },
     "HostingBucketPolicyE887D797": {
       "Properties": {
