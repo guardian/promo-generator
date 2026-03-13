@@ -1,13 +1,13 @@
 allowedStages:
   - CODE
   - PROD
+regions:
+  - eu-west-1
+stacks:
+  - playground
 deployments:
   cfn-eu-west-1-playground-promo-generator:
     type: cloud-formation
-    regions:
-      - eu-west-1
-    stacks:
-      - playground
     app: promo-generator
     contentDirectory: cdk.out
     parameters:
@@ -26,5 +26,6 @@ deployments:
         - pattern: ".*"
           value: "public, max-age=3600"
       prefixStack: false
+      publicReadAcl: false
     dependencies:
       - cfn-eu-west-1-playground-promo-generator
