@@ -9,7 +9,7 @@ deployments:
   cfn-eu-west-1-playground-promo-generator:
     type: cloud-formation
     app: promo-generator
-    contentDirectory: cdk.out
+    contentDirectory: cdk
     parameters:
       templateStagePaths:
         CODE: PromoGenerator-euwest-1-CODE.template.json
