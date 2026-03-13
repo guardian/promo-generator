@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { toPng } from 'html-to-image';
 import { 
   Download, Link, Move, RefreshCw, ZoomIn, 
   Type, Layout, ArrowRight, Loader2, AlertCircle, RotateCcw 
@@ -200,16 +201,6 @@ export default function App() {
   const containerRef = useRef(null);
   const touchStartDist = useRef(null); 
 
-  // Load html2canvas script
-  useEffect(() => {
-    if (!document.querySelector('script[src*="html2canvas"]')) {
-      const script = document.createElement('script');
-      script.src = 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, []);
-
   // Auto-Scale Logic
   useEffect(() => {
     const handleResize = () => {
@@ -400,20 +391,20 @@ export default function App() {
   };
 
   const handleDownload = async () => {
-    if (!window.html2canvas || !canvasRef.current) return;
+    if (!canvasRef.current) return;
     try {
       setLoading(true);
-      const canvas = await window.html2canvas(canvasRef.current, {
-        scale: 2, 
+      const dataUrl = await toPng(canvasRef.current, {
+        pixelRatio: 2,
         useCORS: true, 
-        allowTaint: true,
         backgroundColor: bgColor 
       });
       const link = document.createElement('a');
       link.download = `promo-${Date.now()}.png`;
-      link.href = canvas.toDataURL('image/png', 1.0);
+      link.href = dataUrl;
       link.click();
     } catch (err) {
+      console.error(err);
       setError("Export failed. Security settings prevented image download.");
     } finally {
       setLoading(false);
