@@ -18,6 +18,35 @@ const decodeEntities = (html) => {
   return DECODE_TEXTAREA.value;
 };
 
+const DEFAULT_IMAGE_URL = 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop';
+
+// DEMO ONLY: Replace these public proxies with your own endpoint before production use.
+const DEMO_IMAGE_PROXY_BUILDERS = [
+  (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  (url) => `https://thingproxy.freeboard.io/fetch/${url}`
+];
+
+const DEMO_IMAGE_PROXY_PREFIXES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://api.codetabs.com/v1/proxy?quest=',
+  'https://thingproxy.freeboard.io/fetch/'
+];
+
+const isHttpUrl = (value) => /^https?:\/\//i.test(value || '');
+
+const buildDemoImageCandidates = (rawUrl) => {
+  if (!rawUrl) return [];
+  if (!isHttpUrl(rawUrl)) return [rawUrl];
+
+  // Avoid double-wrapping if this is already a proxied URL.
+  if (DEMO_IMAGE_PROXY_PREFIXES.some((prefix) => rawUrl.startsWith(prefix))) {
+    return [rawUrl];
+  }
+
+  return [...DEMO_IMAGE_PROXY_BUILDERS.map((buildProxyUrl) => buildProxyUrl(rawUrl)), rawUrl];
+};
+
 const buildGuardianApiUrl = (articleUrl) => {
   const urlObj = new URL(articleUrl);
   const hostname = urlObj.hostname.replace(/^www\./, '');
@@ -222,7 +251,8 @@ export default function App() {
   const [sectionId, setSectionId] = useState('news');
   const [headline, setHeadline] = useState('Headline goes here');
   const [subheadline, setSubheadline] = useState('Standfirst goes here');
-  const [image, setImage] = useState('https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=1000&auto=format&fit=crop');
+  const [image, setImage] = useState(DEFAULT_IMAGE_URL);
+  const [rawImageUrl, setRawImageUrl] = useState(DEFAULT_IMAGE_URL);
   const [bgColor, setBgColor] = useState('#1a1a1a'); 
   
   // Derived Theme
@@ -281,11 +311,46 @@ export default function App() {
     return () => container.removeEventListener('wheel', onWheel);
   }, []);
 
+  // DEMO ONLY: Tries multiple public proxies and keeps the first image URL that loads.
+  useEffect(() => {
+    if (!rawImageUrl) {
+      setImage('');
+      return;
+    }
+
+    const candidates = buildDemoImageCandidates(rawImageUrl);
+    let cancelled = false;
+
+    const tryCandidate = (index) => {
+      if (cancelled) return;
+      if (index >= candidates.length) {
+        setImage(rawImageUrl);
+        return;
+      }
+
+      const candidateUrl = candidates[index];
+      const probe = new Image();
+      probe.crossOrigin = 'anonymous';
+      probe.onload = () => {
+        if (!cancelled) setImage(candidateUrl);
+      };
+      probe.onerror = () => {
+        if (!cancelled) tryCandidate(index + 1);
+      };
+      probe.src = candidateUrl;
+    };
+
+    tryCandidate(0);
+    return () => {
+      cancelled = true;
+    };
+  }, [rawImageUrl]);
+
   // Extract Colors
   useEffect(() => {
     if (!image) return;
     const img = new Image();
-    img.crossOrigin = "Anonymous";
+    img.crossOrigin = "anonymous";
     img.src = image;
     img.onload = () => {
         try {
@@ -302,6 +367,9 @@ export default function App() {
         } catch (e) {
             setBgColor('#1a1a1a'); 
         }
+    };
+    img.onerror = () => {
+      setBgColor('#1a1a1a');
     };
   }, [image]);
 
@@ -338,7 +406,7 @@ export default function App() {
         setKicker(result.kicker || "News");
         setSectionId(result.sectionId || 'news');
         setSubheadline(result.subheadline || "");
-        if (result.image) setImage(result.image);
+        if (result.image) setRawImageUrl(result.image);
 
     } catch (err) {
       setError(err.message);
@@ -566,7 +634,7 @@ export default function App() {
                         className="w-full h-full object-cover opacity-30 scale-110" 
                         style={{ filter: 'blur(80px) brightness(1.1)' }}
                         alt="Background"
-                        crossOrigin="anonymous"
+                      crossOrigin="anonymous"
                     />
                 </div>
              )}
@@ -619,7 +687,7 @@ export default function App() {
                                     alt="" 
                                     className="w-full h-full object-cover"
                                     style={{ filter: 'blur(40px) brightness(0.4)', transform: 'scale(1.1)' }}
-                                    crossOrigin="anonymous"
+                                  crossOrigin="anonymous"
                                 />
                             </div>
                         )}
@@ -633,7 +701,7 @@ export default function App() {
                             ref={imgRef}
                             src={image} 
                             alt="Article Visual" 
-                            crossOrigin="anonymous" 
+                          crossOrigin="anonymous"
                             draggable={false} 
                             style={{
                                 position: 'absolute',
