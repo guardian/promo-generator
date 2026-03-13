@@ -46,7 +46,9 @@ export class PromoGenerator extends GuStack {
       priceClass: PriceClass.PRICE_CLASS_100,
       httpVersion: HttpVersion.HTTP2_AND_3,
       defaultBehavior: {
-        origin: new S3Origin(hostingBucket),
+        origin: new S3Origin(hostingBucket, {
+          originPath: `/${this.stage}/${app}`
+        }),
         cachePolicy: CachePolicy.CACHING_OPTIMIZED,
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       }

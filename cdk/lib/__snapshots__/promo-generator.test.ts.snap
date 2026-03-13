@@ -177,6 +177,7 @@ exports[`The PromoGenerator stack matches the snapshot 1`] = `
                 ],
               },
               "Id": "PromoGeneratorPromoGeneratorDistOrigin104A4BA1A",
+              "OriginPath": "/TEST/promo-generator",
               "S3OriginConfig": {
                 "OriginAccessIdentity": {
                   "Fn::Join": [
