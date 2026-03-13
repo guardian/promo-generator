@@ -7,6 +7,12 @@ on:
 
 jobs:
   build:
+    permissions:
+      id-token: write
+      contents: read
+      checks: write
+      issues: read
+      pull-requests: write
     runs-on: ubuntu-latest
 
     steps:
@@ -28,7 +34,7 @@ jobs:
       - name: Synthesize (CDK)
         working-directory: ./cdk
         run: npm run synth
-        
+
       - name: Install dependencies
         run: npm ci
 
