@@ -25,7 +25,19 @@ jobs:
       - name: Build app
         run: npm run build
 
-      - name: Zip build output
-        working-directory: ./dist
-        run: zip -r ../build.zip .
+    #   - name: Zip build output
+    #     working-directory: ./dist
+    #     run: zip -r ../build.zip .
 
+      - uses: guardian/actions-riff-raff@v4
+        with:
+          app: promo-generator
+          roleArn: ${{ secrets.GU_RIFF_RAFF_ROLE_ARN }}
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          configPath: riff-raff.yaml
+          projectName: "playground::promo-generator"
+          contentDirectories: |
+            cdk:
+              - cdk/cdk.out
+            promo-generator:
+              - dist/

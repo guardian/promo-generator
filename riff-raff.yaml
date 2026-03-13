@@ -1,0 +1,30 @@
+allowedStages:
+  - CODE
+  - PROD
+deployments:
+  cfn-eu-west-1-playground-promo-generator:
+    type: cloud-formation
+    regions:
+      - eu-west-1
+    stacks:
+      - playground
+    app: promo-generator
+    contentDirectory: cdk.out
+    parameters:
+      templateStagePaths:
+        CODE: PromoGenerator-euwest-1-CODE.template.json
+        PROD: PromoGenerator-euwest-1-PROD.template.json
+  promo-generator:
+    type: aws-s3
+    parameters:
+      bucketSsmKeyStageParam:
+        CODE: /CODE/playground/promo-generator/hosting-bucket
+        PROD: /PROD/playground/promo-generator/hosting-bucket
+      cacheControl:
+        - pattern: ".*.html$"
+          value: "public, max-age=60, must-revalidate"
+        - pattern: ".*"
+          value: "public, max-age=3600"
+      prefixStack: false
+    dependencies:
+      - cfn-eu-west-1-playground-promo-generator
