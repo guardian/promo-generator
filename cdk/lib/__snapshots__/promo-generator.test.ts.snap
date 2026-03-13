@@ -36,7 +36,6 @@ exports[`The PromoGenerator stack matches the snapshot 1`] = `
     "HostingBucket5DAC2127": {
       "DeletionPolicy": "Retain",
       "Properties": {
-        "BucketName": "promo-generator-hosting",
         "Tags": [
           {
             "Key": "gu:cdk:version",
@@ -55,9 +54,6 @@ exports[`The PromoGenerator stack matches the snapshot 1`] = `
             "Value": "TEST",
           },
         ],
-        "WebsiteConfiguration": {
-          "IndexDocument": "index.html",
-        },
       },
       "Type": "AWS::S3::Bucket",
       "UpdateReplacePolicy": "Retain",
@@ -86,6 +82,32 @@ exports[`The PromoGenerator stack matches the snapshot 1`] = `
         },
         "PolicyDocument": {
           "Statement": [
+            {
+              "Action": "s3:GetObject",
+              "Effect": "Allow",
+              "Principal": {
+                "CanonicalUser": {
+                  "Fn::GetAtt": [
+                    "PromoGeneratorDistOrigin1S3OriginAE485395",
+                    "S3CanonicalUserId",
+                  ],
+                },
+              },
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt": [
+                        "HostingBucket5DAC2127",
+                        "Arn",
+                      ],
+                    },
+                    "/*",
+                  ],
+                ],
+              },
+            },
             {
               "Action": "s3:GetObject",
               "Condition": {
@@ -148,29 +170,26 @@ exports[`The PromoGenerator stack matches the snapshot 1`] = `
           "IPV6Enabled": true,
           "Origins": [
             {
-              "CustomOriginConfig": {
-                "OriginProtocolPolicy": "http-only",
-                "OriginSSLProtocols": [
-                  "TLSv1.2",
-                ],
-              },
               "DomainName": {
-                "Fn::Select": [
-                  2,
-                  {
-                    "Fn::Split": [
-                      "/",
-                      {
-                        "Fn::GetAtt": [
-                          "HostingBucket5DAC2127",
-                          "WebsiteURL",
-                        ],
-                      },
-                    ],
-                  },
+                "Fn::GetAtt": [
+                  "HostingBucket5DAC2127",
+                  "RegionalDomainName",
                 ],
               },
               "Id": "PromoGeneratorPromoGeneratorDistOrigin104A4BA1A",
+              "S3OriginConfig": {
+                "OriginAccessIdentity": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "origin-access-identity/cloudfront/",
+                      {
+                        "Ref": "PromoGeneratorDistOrigin1S3OriginAE485395",
+                      },
+                    ],
+                  ],
+                },
+              },
             },
           ],
           "PriceClass": "PriceClass_100",
@@ -202,6 +221,14 @@ exports[`The PromoGenerator stack matches the snapshot 1`] = `
         ],
       },
       "Type": "AWS::CloudFront::Distribution",
+    },
+    "PromoGeneratorDistOrigin1S3OriginAE485395": {
+      "Properties": {
+        "CloudFrontOriginAccessIdentityConfig": {
+          "Comment": "Identity for PromoGeneratorPromoGeneratorDistOrigin104A4BA1A",
+        },
+      },
+      "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
     },
   },
 }

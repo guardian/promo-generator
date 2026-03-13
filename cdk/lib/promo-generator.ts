@@ -21,10 +21,7 @@ export class PromoGenerator extends GuStack {
   constructor(scope: App, id: string, props: GuStackProps) {
     super(scope, id, props);
 
-    const hostingBucket = new Bucket(this, "HostingBucket", {
-      bucketName: "promo-generator-hosting",
-      websiteIndexDocument: "index.html",
-    });
+    const hostingBucket = new Bucket(this, "HostingBucket", {});
 
     new StringParameter(this, "HostingBucketName", {
       parameterName: `/${this.stage}/${this.stack}/${app}/hosting-bucket`,
