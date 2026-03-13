@@ -495,10 +495,30 @@ export default function App() {
         onMouseDown={(e) => e.stopPropagation()} 
         className="w-full md:w-96 bg-gray-800 p-6 flex flex-col gap-6 overflow-y-auto border-r border-gray-700 z-50 shadow-xl flex-shrink-0"
       >
-        <h1 className="text-2xl font-bold text-gray-100 flex items-center gap-2">
-           <Layout className="w-6 h-6 text-[#FFE500]" /> 
-           <span>Promo Generator</span>
-        </h1>
+        <div className="space-y-2">
+          <details open className="rounded-md border border-amber-300/40 bg-amber-100/10 px-3 py-2 text-amber-100">
+            <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-amber-200">
+              Disclaimer
+            </summary>
+            <p className="mt-2 text-[11px] leading-relaxed">
+              This service is provided in the hope that it&apos;s helpful but is not officially supported by P&amp;E. If you have problems, you can raise an issue on{' '}
+              <a
+                href="https://github.com/guardian/promo-generator"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-amber-200 underline decoration-amber-300/80 underline-offset-2 hover:text-amber-50"
+              >
+                https://github.com/guardian/promo-generator
+              </a>{' '}
+              or try to fix it yourself
+            </p>
+          </details>
+
+          <h1 className="flex items-center gap-2" style={{marginTop: 0, marginBottom: 0}}>
+             <Layout className="w-6 h-6 text-[#FFE500]" /> 
+             <span className="font-bold text-white items-center leading-tight">Promo Generator</span>
+          </h1>
+        </div>
 
         <div className="space-y-2">
           <label className="text-xs uppercase tracking-wider text-gray-400 font-semibold flex items-center gap-2">
