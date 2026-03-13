@@ -18,37 +18,74 @@ const decodeEntities = (html) => {
   return DECODE_TEXTAREA.value;
 };
 
-// Robust Proxy Fetcher
-const fetchProxy = async (targetUrl) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-  const cacheBuster = `&t=${Date.now()}`;
-  const proxies = [
-    { url: `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}${cacheBuster}`, type: 'json' },
-    { url: `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`, type: 'text' },
-  ];
-
-  try {
-    const fetchPromises = proxies.map(p => 
-      fetch(p.url, { signal: controller.signal })
-        .then(async (res) => {
-          if (!res.ok) throw new Error(`Status ${res.status}`);
-          if (p.type === 'json') {
-            const data = await res.json();
-            return data.contents; 
-          }
-          return res.text();
-        })
-    );
-    
-    const content = await Promise.any(fetchPromises);
-    clearTimeout(timeoutId);
-    return content;
-  } catch (e) {
-    clearTimeout(timeoutId);
-    throw new Error("Direct connection failed.");
+const buildGuardianApiUrl = (articleUrl) => {
+  const urlObj = new URL(articleUrl);
+  const hostname = urlObj.hostname.replace(/^www\./, '');
+  if (hostname !== 'theguardian.com') {
+    throw new Error('Not a Guardian URL');
   }
+
+  const cleanPath = urlObj.pathname.replace(/\/+$/, '');
+  if (!cleanPath || cleanPath === '/') {
+    throw new Error('Invalid Guardian article path');
+  }
+
+  const apiUrl = new URL(`https://content.guardianapis.com${cleanPath}`);
+  apiUrl.searchParams.set('show-tags', 'all');
+  apiUrl.searchParams.set('show-elements', 'image');
+  apiUrl.searchParams.set('show-fields', 'all');
+  apiUrl.searchParams.set('api-key', 'test');
+  return apiUrl.toString();
+};
+
+const standfirstToText = (standfirstHtml) => {
+  if (!standfirstHtml) return '';
+  const doc = new DOMParser().parseFromString(standfirstHtml, 'text/html');
+  return (doc.body?.textContent || '').replace(/\s+/g, ' ').trim();
+};
+
+const getMainImageUrl = (elements = []) => {
+  const mainImage = elements.find((el) => el?.type === 'image' && el?.relation === 'main');
+  const imageAssets = (mainImage?.assets || []).filter((asset) => asset?.type === 'image' && asset?.file);
+  if (!imageAssets.length) return null;
+
+  const sortedAssets = [...imageAssets].sort(
+    (a, b) => Number(b?.typeData?.width || 0) - Number(a?.typeData?.width || 0)
+  );
+  return sortedAssets[0]?.file || imageAssets[0]?.file || null;
+};
+
+const parseGuardianApiJson = (apiJson) => {
+  const content = apiJson?.response?.content;
+  if (!content) {
+    throw new Error('Invalid Guardian API response.');
+  }
+
+  const detectedSectionId = (content.sectionId || 'news').toLowerCase();
+  const bestKicker = content.sectionName || 'News';
+  const bestHeadline = content?.fields?.headline || content?.webTitle || '';
+  const desc = standfirstToText(content?.fields?.standfirst || content?.fields?.trailText || '');
+  const bestImage = getMainImageUrl(content?.elements) || content?.fields?.thumbnail || null;
+
+  return {
+    headline: decodeEntities(bestHeadline),
+    kicker: decodeEntities(bestKicker),
+    sectionId: detectedSectionId,
+    subheadline: decodeEntities(desc),
+    image: bestImage,
+    source: 'HTML'
+  };
+};
+
+const fetchGuardianApi = async (articleUrl) => {
+  const apiUrl = buildGuardianApiUrl(articleUrl);
+  const response = await fetch(apiUrl);
+  if (!response.ok) {
+    throw new Error(`Guardian API returned status ${response.status}`);
+  }
+
+  const apiJson = await response.json();
+  return parseGuardianApiJson(apiJson);
 };
 
 // Microlink Fetcher
@@ -268,76 +305,6 @@ export default function App() {
     };
   }, [image]);
 
-  const parseHTML = (html, sourceUrl) => {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    
-    let detectedSectionId = 'news';
-    
-    const scripts = Array.from(doc.querySelectorAll('script'));
-    for (const s of scripts) {
-      const content = s.textContent || "";
-      const sectionMatch = content.match(/"section":\s*"([^"]+)"/) || 
-                           content.match(/"category":\s*"([^"]+)"/) ||
-                           content.match(/sectionId:\s*'([^']+)'/);
-      if (sectionMatch && sectionMatch[1]) {
-        detectedSectionId = sectionMatch[1].toLowerCase();
-        break;
-      }
-    }
-
-    const sectionMeta = doc.querySelector('meta[property="article:section"]')?.getAttribute('content') || 
-                        doc.querySelector('meta[name="section"]')?.getAttribute('content');
-    
-    const tagMeta = doc.querySelector('meta[property="article:tag"]')?.getAttribute('content') ||
-                    doc.querySelector('meta[name="keywords"]')?.getAttribute('content');
-
-    const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content') || doc.title || '';
-    
-    const isGeneric = (val) => {
-      if (!val) return true;
-      const lower = val.toLowerCase();
-      return lower === 'news' || lower === 'global' || lower.includes('guardian') || lower === 'world news' || lower === 'latest';
-    };
-
-    let candidate = detectedSectionId === 'news' ? sectionMeta : detectedSectionId;
-    
-    if (isGeneric(candidate) && sourceUrl) {
-      try {
-        const urlObj = new URL(sourceUrl);
-        const pathParts = urlObj.pathname.split('/').filter(p => p);
-        if (pathParts.length > 0 && isNaN(pathParts[0])) {
-           detectedSectionId = pathParts[0].toLowerCase();
-           candidate = pathParts[0].charAt(0).toUpperCase() + pathParts[0].slice(1);
-        }
-      } catch (e) {}
-    }
-
-    if (isGeneric(candidate)) {
-        if (tagMeta) {
-            const firstTag = tagMeta.split(',')[0].trim();
-            if (firstTag) candidate = firstTag;
-        }
-    }
-
-    const bestKicker = (candidate || 'News').split(/[:.(\n]/)[0].trim();
-    let bestHeadline = ogTitle.split('|')[0].trim();
-    const desc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content') || '';
-    
-    let bestImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content');
-    if (bestImage && (bestImage.includes('facebook-logo') || bestImage.includes('twitter-logo'))) {
-        bestImage = null;
-    }
-
-    return {
-        headline: decodeEntities(bestHeadline),
-        kicker: decodeEntities(bestKicker),
-        sectionId: detectedSectionId,
-        subheadline: decodeEntities(desc),
-        image: bestImage,
-        source: 'HTML'
-    };
-  };
-
   const fetchArticle = async (forcedUrl = null) => {
     const targetUrl = forcedUrl || url;
     if (!targetUrl) return;
@@ -350,18 +317,17 @@ export default function App() {
     try {
         try { new URL(targetUrl); } catch(e) { throw new Error("Invalid URL"); }
 
-        const directPromise = fetchProxy(targetUrl)
-            .then(html => parseHTML(html, targetUrl))
+        const guardianPromise = fetchGuardianApi(targetUrl)
             .then(data => {
                 if (!data.headline) throw new Error("Partial Data");
                 return data;
             });
 
-        const microPromise = fetchMicrolink(targetUrl);
+        //const microPromise = fetchMicrolink(targetUrl);
 
         let result;
         try {
-            result = await Promise.any([directPromise, microPromise]);
+          result = await guardianPromise;
         } catch (aggregateError) {
             throw new Error("All fetching methods failed. Site may be blocking bots.");
         }
